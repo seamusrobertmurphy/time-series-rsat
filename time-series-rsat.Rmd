@@ -7,209 +7,129 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 ```
 
-```{r, echo=FALSE}
-library(animation)
-library(bfast)
-library(BH)
-library(boot)
-library(bslib)
-library(Cairo)
-library(caret)
-library(codetools)
-library(colorspace)
-library(compiler)
-library(conflicted)
-library(corrplot)
-library(cowplot)
-library(cpp11)
-library(credentials)
-library(curl)
-library(doParallel)
-library(downloader)
-library(dplyr)
-library(dtw)
-library(dtwclust)
-library(e1071)
-library(earthdatalogin)
-library(forecast)
-library(formatR)
-library(gdalBindings)
-library(gdalcubes)
-library(geojsonsf)
-library(geos)
-library(geosphere)
-library(ggplot2)
-library(ggstats)
-library(ggThemeAssist)
-#library(gifski)
-library(globals)
-library(googledrive)
-library(gridExtra)
-library(gtable)
-library(highr)
-library(htmltools)
-library(httpuv)
-library(httr)
-library(httr2)
-library(jpeg)
-library(jsonify)
-library(jsonlite)
-library(knitr)
-library(lattice)
-library(lazyraster)
-library(leafem)
-library(leafgl)
-library(leafsync)
-library(libgeos)
-library(lmtest)
-library(lubridate)
-library(lwgeom)
-library(kableExtra)
-library(kernlab)
-library(magrittr)
-library(maps)
-library(markdown)
-library(Matrix)
-library(ModelMetrics)
-library(modelr)
-library(modeltools)
-library(ncdf4)
-library(ncdf4.helpers)
-library(NTSS)
-library(nlme)
-library(olsrr)
-library(openssl)
-library(openxlsx)
-library(pandoc)
-library(proj4)
-library(purrr)
-library(R.utils)
-library(randomForest)
-library(ranger)
-library(raster)
-library(rcmdcheck)
-library(RColorBrewer)
-library(Rcpp)
-library(RcppArmadillo)
-library(RcppParallel)
-library(RcppThread)
-library(RcppTOML)
-library(rapidjsonr)
-library(readr)
-library(readxl)
-library(recipes)
-library(remotes)
-library(reprex)
-library(reshape2)
-library(rex)
-library(rgl)
-library(rJava)
-library(rlang)
-library(rmarkdown)
-library(rnaturalearthdata)
-library(RNetCDF)
-library(rpart)
-library(rspm)
-library(RSQLite)
-library(rstac)
-library(Rwtss)
-library(s2)
-library(scales)
-library(selectr)
-library(servr)
-library(sf)
-library(shape)
-options("sp_evolution_status" = 2)
-library(spatial)
-library(spatstat)
-library(spatstat.data)
-library(spatstat.explore)
-library(spatstat.geom)
-library(spatstat.gui)
-library(spatstat.Knet)
-library(spatstat.linnet)
-library(spatstat.model)
-library(spatstat.random)
-library(spatstat.sparse)
-library(spatstat.utils)
-library(stars)
-library(startup)
-library(strucchangeRcpp)
-library(styler)
-library(sys)
-library(sysfonts)
-library(terra)
-library(testthat)
-library(tibble)
-library(tidyr)
-library(tidyselect)
-library(tidyverse)
-library(tinytest)
-library(tinytex)
-library(timechange)
-library(timeDate)
-library(tmaptools)
-library(tmap)
-library(tzdb)
-library(units)
-library(usethis)
-library(viridis)
-library(vroom)
-library(warp)
-library(wk)
-library(whoami)
-library(xfun)
-library(xgboost)
-library(XML)
-library(xopen)
-library(xtable)
-library(xts)
-library(yaml)
-library(ymlthis)
-library(zeallot)
-library(zip)
-library(vapour)
-library(xts)
-library(zoo)
-```
-
 ### Data Sources
 
-So far, the `rsat` packaged has proved most reliable in successfully accessing, identifying, processing and downloading time-series data cubes. In addition, as the package was written by remote sensing experts with remote sensing experts in mind, the package provides a far richer and more sophisticated set of functions and customizable tools. As a result however, it involves longer processing and coding time.
+So far, the `rsat` packaged has proved most reliable. Better at accessing, scanning and downloading, though it doesnt include a quick download option and tends to involve longer processing and coding time. In-built vignettes seem to be best learning resources (i.e. `rsat::rsat1_search`).
 
-```{r}
-library(getSpatialData) 
-login_USGS(username = "seamusrobertmurphy@gmail.com")
-login_CopHub(username = "seamusrobertmurphy@gmail.com")
-login_earthdata(username = "seamusrobertmurphy@gmail.com")
-services()
-```
+Access issues, consider that `rsat` communicates with data archives through *APIs* using the following functions. Sort out your earthdata privileges first...
 
-```{r, eval=FALSE}
+```{r, eval=T, warning=FALSE, error=FALSE}
 library(rsat)
-set_credentials("username","password", "earthdata")
-
+#set_credentials("username","password", "earthdata") ## not working ???
+library(getSpatialData) ## is working ???
+getSpatialData::login_earthdata()
+getSpatialData::login_USGS()
+services()
 ```
 
 ### Loading Data Libraries
 
-```{r}
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
 library(sf)
 library(tmap)
-roi = sf::read_sf("~/git_repos/remote-sensing-lake-chilwa/roi/chilwa_watershed_4326.shp")
-toi <- as.Date("2021-01-01") + 0:15
-# Visualize aoi
-tmap_mode("view")
-tm_shape(st_geometry(roi)) +  
-  tm_polygons()
+# search paramters
+ip <- st_sf(st_as_sfc(st_bbox(c(
+  xmin = 35.09583,
+  xmax = 36.29583,
+  ymin = -15.90890,
+  ymax = -14.77500 
+), crs = 4326)))
+toi_2018 <- seq(as.Date("2018-10-01"),as.Date("2021-12-30"),1)
 
-rcd <- rsat_search(
-  region = roi, dates = toi,
-  product = c("LANDSAT_ETM_C1", "LANDSAT_ETM_C1", "LANDSAT_TM_C1"))
+# review available ibrary
+rsat_products()
+# confirm available collections
+browse = rsat_search(
+  region = ip,
+  dates = toi_2018,
+  product = c(
+    "landsat_ot_c2_l1", 
+    "landsat_etm_c2_l1", 
+    "landsat_tm_c2_l1"),
+  verbose=F) # NOTE: tm unavailable for toi_2018  
 
-class(rcd)
-rsat::rsat_search()
+# assign location for downloads 
+db.path <- "/media/seamus/Ubuntu 22_04 LTS amd64/rsat/edits/database"
+ds.path <- "/media/seamus/Ubuntu 22_04 LTS amd64/rsat/edits/datasets"
+dir.create(db.path)
+dir.create(ds.path)
 
+# derive 'rtoi' spatial-filter
+chilwa1 <- new_rtoi(
+  name = "chilwa1",
+  region = ip,
+  db_path = db.path,
+  rtoi_path = ds.path)
+
+# prep downloads using filters: rtoi & toi_2018  
+chilwa_2018 = rsat_search(
+  region = chilwa1,
+  dates = toi_2018,
+  product = c(
+    "landsat_ot_c2_l1", 
+    "landsat_etm_c2_l1") )
+
+# download w/o processing (.../rtoi assigned folder)
+rsat_download(chilwa1)
+
+# download w/ mosaic+clip+compression processing
+rsat_mosaic(chilwa1)
+
+# check outputs
+list.files(
+  file.path(
+    ds.path, "chilwa1", 
+    "/media/seamus/Ubuntu 22_04 LTS amd64/rsat/edits/mosaics"),  
+  full.name = T)
+
+plot(filomena, as.Date("2018-11-11"),xsize = 500, ysize = 500) # res increased from default plot which is 250x250-pixels LxW.
+
+
+```
+
+```{r}
+
+
+
+db.path <- file.path(tempdir(),"database")
+ds.path <- file.path(tempdir(),"datasets")
+dir.create(db.path)
+dir.create(ds.path)
+The minimum information to generate a new rtoi is a name for the object, a polygon of the region of interest (roi), and the paths to the database and dataset:
+
+filomena <- new_rtoi(name = "filomena",
+                     region = ip,
+                     db_path = db.path,
+                     rtoi_path = ds.path)
+To limit the amount of data and processing times, the assessment is conducted over MODIS imagery. A total number of 24
+ images are found for the region over the 6
+-day period:
+
+rsat_search(region = filomena, product = c("mod09ga"), dates = toi)
+The way to download the search results is as follows:
+
+rsat_download(filomena)
+
+
+roi_gpkg = sf::st_read("~/git_repos/time-series-rsat/roi/chilwa_watershed_4326.gpkg") 
+roi_sf_sfc_bbox = st_sf(st_as_sfc(st_bbox(roi_gpkg)))
+bbox_raw = st_bbox(roi_gpkg)
+
+toi_2018_dry <- seq(as.Date("2018-10-01"),as.Date("2018-12-30"),1)
+
+
+
+rtoi1 = new_rtoi(
+  name = "rtoi1",
+  region = roi_sf_sfc_bbox,
+  db_path = db.path,
+  rtoi_path = ds.path)
+  
+rsat_search(
+  region = rtoi1, 
+  dates = toi_2018_dry)
+
+rsat_download(rtoi1)
 
 ```
 
